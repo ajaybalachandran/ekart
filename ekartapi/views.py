@@ -2,7 +2,7 @@ from django.shortcuts import render
 
 # Create your views here.
 from rest_framework.viewsets import ModelViewSet, ViewSet
-from ekartapi.serializers import UserSerializer, CategorySerializer, ProductSerializer, CartSerializer
+from ekartapi.serializers import UserSerializer, CategorySerializer, ProductSerializer, CartSerializer, ReviewSerializer
 from rest_framework import permissions
 from ekartapi.models import Category, Products, Carts
 from rest_framework.response import Response
@@ -41,7 +41,7 @@ class CategoryView(ModelViewSet):
         cat = Category.objects.get(id=id)
         products = cat.products_set.all()
         serializer = ProductSerializer(products, many=True)
-        return Response(serializer.data)
+        return Response(data=serializer.data)
 
 
 class ProductsView(ViewSet):
@@ -58,15 +58,52 @@ class ProductsView(ViewSet):
         serializer = ProductSerializer(product,many=False)
         return Response(data=serializer.data)
 
+    @action(methods=['POST'], detail=True)
+    def add_to_cart(self, request, *args, **kwargs):
+        id = kwargs.get('pk')
+        product = Products.objects.get(id=id)
+        user = request.user
+        serializer = CartSerializer(data=request.data, context={'product': product, 'user': user})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(data=serializer.data)
+        else:
+            return Response(data=serializer.errors)
+
+    # localhost:8000/ekart/products/{pid}/add_review
+    @action(methods=['POST'], detail=True)
+    def add_review(self, request, *args, **kwargs):
+        id = kwargs.get('pk')
+        product = Products.objects.get(id=id)
+        serializer = ReviewSerializer(data=request.data, context={'product': product, 'user': request.user})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(data=serializer.data)
+        else:
+            return Response(data=serializer.errors)
+
+     # localhost:8000/ekart/products/{pid}/get_reviews
+    @action(methods=['GET'], detail=True)
+    def get_reviews(self, request, *args, **kwargs):
+        id = kwargs.get('pk')
+        product = Products.objects.get(id=id)
+        reviews = product.reviews_set.all()
+        serializer = ReviewSerializer(reviews, many=True)
+        return Response(data=serializer.data)
+
+
 
 class CartsView(ModelViewSet):
     serializer_class = CartSerializer
     queryset = Carts.objects.all()
+    permission_classes = [permissions.IsAuthenticated]
 
-    def create(self, request, *args, **kwargs):
-        id = kwargs.get("pk")
-        pro = Products.objects.get(id=id)
-        user = request.user
-        Carts.objects.create(user=user, product=pro)
-        return Response(data='created')
+    def get_queryset(self):
+        return Carts.objects.filter(user=self.request.user)
 
+    # def list(self, request, *args, **kwargs):
+    #     user = request.user
+    #     # cart = Carts.objects.filter(user=user)
+    #     cart = user.carts_set.all()
+    #     serializer = CartSerializer(cart, many=True)
+    #     return Response(data=serializer.data)

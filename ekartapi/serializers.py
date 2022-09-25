@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from ekartapi.models import Category, Products, Carts
+from ekartapi.models import Category, Products, Carts, Reviews
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -27,6 +27,11 @@ class ProductSerializer(serializers.ModelSerializer):
         model = Products
         fields = '__all__'
 
+    def validate_price(self, value):
+        if value not in range(50, 70000):
+            raise serializers.ValidationError('invalid price')
+        return value
+
     def create(self, validated_data):
         category = self.context.get('category')
         return Products.objects.create(**validated_data, category=category)
@@ -37,7 +42,25 @@ class CartSerializer(serializers.ModelSerializer):
     product = serializers.CharField(read_only=True)
     created_date = serializers.CharField(read_only=True)
     status = serializers.CharField(read_only=True)
+
     class Meta:
-        models = Carts
+        model = Carts
         fields = '__all__'
 
+    def create(self, validated_data):
+        product = self.context.get('product')
+        user = self.context.get('user')
+        return Carts.objects.create(**validated_data, user=user, product=product)
+
+
+class ReviewSerializer(serializers.ModelSerializer):
+    user = serializers.CharField(read_only=True)
+    product = serializers.CharField(read_only=True)
+    class Meta:
+        model = Reviews
+        fields = '__all__'
+
+    def create(self, validated_data):
+        product = self.context.get('product')
+        user = self.context.get('user')
+        return Reviews.objects.create(**validated_data, product=product, user=user)
