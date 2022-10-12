@@ -21,5 +21,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('ekart/', include('ekartapi.urls')),
     path('token', TokenObtainPairView.as_view()),
-    path('token/refresh',TokenRefreshView.as_view())
+    path('token/refresh',TokenRefreshView.as_view()),
 ]
